@@ -3,6 +3,7 @@ __author__ = 'pokey'
 from dash import *
 import adaptation
 from trace import Trace
+from visualizer import bitswitch_plot
 
 class SimulatorState(object):
     def __init__(self):
@@ -41,21 +42,8 @@ class Simulator(object):
                 v = []
                 for bps in self.bitrates[type_str]:
                     seg = Segment(type_str, bps, self.segment_length[type_str])
-                    print seg
                     v.append(seg)
                 self.segments[type_str].append(v)
-
-    def log_segment(self, http):
-        type_str = http.segment.type_str
-        buffer_level = self.state.metric.buffer_levels[type_str][-1]
-        if not self.state.metric.switches[type_str]:
-            self.state.metric.switches[type_str].append(http.segment)
-        else:
-            if http.segment.bps != self.state.metric.switches[type_str][-1].bps:
-                self.state.metric.switches[type_str].append(http.segment)
-                print("Bitrate switched from %.1fkbps to %.1fkbps" % (
-                      self.state.metric.switches[type_str][-2].bps/1000.0, http.segment.bps/1000.0))
-                self.state.current_bitrate = http.segment.bps
 
     def buffer_level(self, type_str):
         return self.state.metric.buffer_levels[type_str].level
@@ -86,7 +74,7 @@ class Simulator(object):
         if next_seg.bps != self.stats.bitrate_selections[type_str].current_value:
             self.stats.bitrate_selections[type_str].append(self.state.t, next_seg.bps)
         self.state.http = HttpMetric(self.sample[type_str].pop() * 1000.0, next_seg)
-        print self.state.http
+        # print self.state.http
         self.state.metric.switches[type_str] = adaptation.bitrate_selections[type_str]
 
     def timestep(self, is_buffering):
@@ -97,6 +85,8 @@ class Simulator(object):
         # dynamic timestep until the download finished. Linear interpolation
         self.state.t += tx_time_s
         print("Timestep %.4f -> %.4f" % (self.state.t - tx_time_s, self.state.t))
+        print self.state.http
+        self.state.metric.bps_history.append(self.state.t, self.state.http.bps)
 
         if not is_buffering:
             print("Consuming %.2fs of buffer..." % tx_time_s)
@@ -105,6 +95,7 @@ class Simulator(object):
 
         # fixed timestep where downloaded data is added to the buffer
         self.state.t += self.TOLERANCE_SEC
+        print("Inc %.2fs of buffer..." % seg_duration)
         self.state.buffer_level(type_str).increase_by(self.state.t, seg_duration)
 
         print "[VIDEO]\t" + self.state.buffer_level("VIDEO").__unicode__()
@@ -125,4 +116,5 @@ class Simulator(object):
             self.timestep(adap.is_buffering())
 
         self.state.metric.print_stats()
+        bitswitch_plot(self.bitrates, self.state.metric.buffer_levels, self.state.metric.bps_history, self.state.metric.switches)
 

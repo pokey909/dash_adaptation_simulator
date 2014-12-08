@@ -61,7 +61,7 @@ class CastLabsAdaptation(Adaptation):
         #                 print "TING!!!!!"
         #                 next_seg = segment_choices[index]
         #             return next_seg
-        return self.bitrates[type_str][-1]
+        return self.bitrates[type_str][0]
 
     def is_buffering(self):
         if self.sim_state is None:

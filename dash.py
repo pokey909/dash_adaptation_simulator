@@ -101,13 +101,13 @@ class BufferLevelMetric(Trace):
 
     @property
     def underrun_count(self):
-        return self._underruns.length
+        return self._underruns.count
 
     def increase_by(self, absolute_time, level_increase):
         val = self.current_value
         if val is None:
             val = 0.0
-        self.append(absolute_time, val)
+        self.append(absolute_time, val + level_increase)
 
     def decrease_by(self, absolute_time, level_decrease):
         val = self.current_value
@@ -144,7 +144,13 @@ class PerformanceMetric:
     def __init__(self):
         self.switches = {"VIDEO": Trace("seconds", "bps"), "AUDIO": Trace("seconds", "bps")}
         self.buffer_levels = {"VIDEO": BufferLevelMetric(), "AUDIO": BufferLevelMetric()}
-        self.http_metrics = []
+        self.bps_history = Trace("seconds", "bps")
+
+        self.bps_history.append(0, 0)
+        self.buffer_levels["VIDEO"].append(0, 0)
+        self.buffer_levels["AUDIO"].append(0, 0)
+        self.switches["VIDEO"].append(0, 0)
+        self.switches["AUDIO"].append(0, 0)
 
     @property
     def underrun_count(self):

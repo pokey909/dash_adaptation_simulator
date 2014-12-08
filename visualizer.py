@@ -1,9 +1,11 @@
 __author__ = 'pokey'
 
 import matplotlib.pyplot as plt
+import numpy as np
 import copy
 
-def bitswitch_plot(buffer_traces, bps_traces, switch_traces):
+
+def bitswitch_plot(bitrates, buffer_traces, bps_traces, switch_traces):
     # f, axarr = plt.subplots(3, sharex=True)
     # axarr[0].plot(buf["VIDEO"])
     # axarr[1].plot(CastLabsAdaptation.moving_average(adaptation.bps_history, 10))
@@ -17,32 +19,33 @@ def bitswitch_plot(buffer_traces, bps_traces, switch_traces):
     # print len(self.ma_bps_history_t())
     # print len(self.ma_bps_history())
 
-    fig, ax1 = plt.subplots()
+    fig, ax = plt.subplots()
 
-    ax1.hold(True)
-    for rate in self.bitrates["VIDEO"]:
-        ax1.axhline(y=rate, color='k', linewidth=0.5)
+    ax.hold(True)
+    for rate in bitrates["VIDEO"]:
+        rate /= 8000.0
+        ax.axhline(y=rate, color='k', linewidth=0.5)
 
     # plot actual bps history
-    bps_x = bps_traces["AUDIO"]["x"].data
-    bps_y = bps_traces["AUDIO"]["y"].data
+    bps_x = np.array(bps_traces.x_data)
+    bps_y = np.array(bps_traces.y_data) / 1000.0 / 8.0
 
-    bps_x.append(bps_traces["VIDEO"]["x"].data)
-    bps_y.append(bps_traces["VIDEO"]["y"].data)
-    ax1.plot(bps_x, bps_y)
+    print bps_y
+    ax.plot(bps_x, bps_y)
 
-    switches_x = switch_traces["VIDEO"]["x"].data
-    switches_y = switch_traces["VIDEO"]["y"].data
+    switches_x = switch_traces["VIDEO"].x_data
+    switches_y = np.array(switch_traces["VIDEO"].y_data) / 8000.0
 
-    ax1.plot(switches[0], switches[1], linewidth=3)
+    ax.plot(switches_x, switches_y, linewidth=3)
 
-    ax1.set_ylabel('bitrate')
+    ax.set_ylabel('bitrate')
 
-    ax2 = ax1.twinx()
-    ax2.set_ylabel('buffer fullness (sec)', color='k')
-    levels = self.state.metric.buffer_levels["VIDEO"].to_list()
-    #ax2.plot(levels[0], levels[1], color='k')
+    ax1 = ax.twinx()
+    ax1.set_ylabel('buffer fullness (sec)', color='k')
+    levels_x = buffer_traces["VIDEO"].x_data
+    levels_y = buffer_traces["VIDEO"].y_data
+    ax.plot(levels_x, levels_y, color='k')
 
-    plt.ylim(ymin=-5000, ymax=self.bitrates["VIDEO"][-1] + 10)
+    # plt.ylim(ymin=-5000, ymax=bitrates["VIDEO"][-1] + 10)
     plt.show()
 

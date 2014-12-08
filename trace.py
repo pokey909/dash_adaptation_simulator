@@ -32,9 +32,27 @@ class Trace(object):
         self.data["y"].label = y_label
         self.data["y"].data = []
 
+    def __unicode__(self):
+        return "__str__ and __unicode__ NOT IMPLEMENTED"
+
+    def __str__(self):
+        return self.__unicode__()
+
+    @property
+    def max(self):
+        return max(self.data["y"].data)
+
+    @property
+    def min(self):
+        return min(self.data["y"].data)
+
+    @property
+    def count(self):
+        return len(self.data["x"].data)
+
     @property
     def length(self):
-        return len(self.data["x"].data)
+        return self.count
 
     @property
     def x_label(self):
@@ -93,9 +111,6 @@ class Trace(object):
     @property
     def current_time(self):
         return self.x_data[-1]
-
-    def length(self):
-        return len(self.x_data)
 
     def moving_average(self, window_size):
         """
