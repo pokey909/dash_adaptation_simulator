@@ -1,6 +1,6 @@
 __author__ = 'pokey'
 
-import numpy as np
+from trace import Trace
 import random
 
 """ DASH metrics. Time unit is milliseconds """
@@ -49,11 +49,6 @@ class Segment:
         return self.__unicode__()
 
 
-class TcpMetric:
-    def __init__(self):
-        self.tcp_connect_time = 0
-
-
 class HttpMetric:
     def __init__(self, bps, segment):
         self.bps = bps
@@ -98,58 +93,65 @@ class HttpMetric:
         return self.__unicode__()
 
 
-class BufferLevelMetric:
+class BufferLevelMetric(Trace):
     def __init__(self):
-        self._t = [0.0]    # in seconds
-        self._level = [0.0] # in seconds
-        self.underruns = []
+        Trace.__init__(self, "seconds", "seconds")
+        self._level = 0.0 # in seconds
+        self._underruns = Trace("seconds", "underrun duration (seconds)")
+
+    @property
+    def underrun_count(self):
+        return self._underruns.length
 
     def increase_by(self, absolute_time, level_increase):
-        self._t.append(absolute_time)
-        self._level.append(self._level[-1] + level_increase)
+        val = self.current_value
+        if val is None:
+            val = 0.0
+        self.append(absolute_time, val)
 
     def decrease_by(self, absolute_time, level_decrease):
-        self._t.append(absolute_time)
-        self._level.append(self._level[-1] - level_decrease)
-        if self._level[-1] <= 0.0:
+        val = self.current_value
+        if val is None:
+            val = 0.0
+        val -= level_decrease
+        if val <= 0.0:
             # record an underrun [time, duration_of_underrun]
-            self.underruns.append([self.time, abs(self.level)])
+            self._underruns.append(absolute_time, abs(val))
             # clamp level to 0.0
-            self._level[-1] = 0.0
-
-    def to_list(self):
-        return [self._t, self._level]
+            val = 0.0
+        self.append(absolute_time, val)
 
     @property
     def level(self):
-        return self._level[-1]
-
-    @property
-    def time(self):
-        return self._t[-1]
+        """
+        Alias for current_value or current_y_value
+        :return: current_y_value
+        """
+        return self.current_value
 
     def __unicode__(self):
-        return "BufferLevel(t=%.2fs): %.2fs" % (self._t[-1], self._level[-1])
+        val = self.current_value
+        if val is not None:
+            return "BufferLevel(t=%.2fs): %.2fs" % (self.current_x_value, self.current_value)
+        else:
+            return "BufferLevel(t=0): 0"
 
-
-class RepresentationSwitchMetric:
-    def __init__(self):
-        self.t = 0  # time of switch event
-        self.to_bandwidth = 0  # bandwidth of the switch-to representation
+    def __str__(self):
+        return self.__unicode__()
 
 
 class PerformanceMetric:
     def __init__(self):
-        self.switches = {"VIDEO": [], "AUDIO": []}
+        self.switches = {"VIDEO": Trace("seconds", "bps"), "AUDIO": Trace("seconds", "bps")}
         self.buffer_levels = {"VIDEO": BufferLevelMetric(), "AUDIO": BufferLevelMetric()}
         self.http_metrics = []
 
     @property
     def underrun_count(self):
-        return len(self.buffer_levels["VIDEO"].underruns) + len(self.buffer_levels["AUDIO"].underruns)
+        return self.buffer_levels["VIDEO"].underrun_count + self.buffer_levels["AUDIO"].underrun_count
 
     def min_buffer_level(self):
-        return min(self.buffer_levels["VIDEO"].level, self.buffer_levels["AUDIO"].level)
+        return min(self.buffer_levels["VIDEO"].current_value, self.buffer_levels["AUDIO"].current_value)
 
     """ So far, use reciproc of underruns to give a score. 1.0 perfect score """
 

@@ -33,6 +33,10 @@ class Trace(object):
         self.data["y"].data = []
 
     @property
+    def length(self):
+        return len(self.data["x"].data)
+
+    @property
     def x_label(self):
         return self.data["x"].label
 
@@ -69,11 +73,22 @@ class Trace(object):
         self.y_data.append(y_data)
 
     @property
-    def current_value(self):
-        if len(self.x_data):
+    def current_y_value(self):
+        if len(self.y_data):
             return self.y_data[-1]
         else:
             return None
+
+    @property
+    def current_x_value(self):
+        if len(self.x_data):
+            return self.x_data[-1]
+        else:
+            return None
+
+    @property
+    def current_value(self):
+        return self.current_y_value
 
     @property
     def current_time(self):
