@@ -3,7 +3,11 @@ __author__ = 'pokey'
 from dash import *
 import adaptation
 from trace import Trace
-from visualizer import bitswitch_plot
+from visualizer import bitswitch_plot, plot, show, step
+import matplotlib.pyplot as plt
+import algorithms as alg
+import copy
+
 
 class SimulatorState(object):
     def __init__(self):
@@ -26,7 +30,7 @@ class Simulator(object):
     TOLERANCE_SEC = 0.0001
 
     def __init__(self):
-        self.bitrates = {"VIDEO": [2000000, 3000000, 5000000, 8000000, 9000000, 15000000], "AUDIO": [128000]}  # bps
+        self.bitrates = {"VIDEO": [500000, 1000000, 6000000, 8000000, 9000000, 16000000], "AUDIO": [128000]}  # bps
         self.segment_length = {"VIDEO": 6.0, "AUDIO": 3.0}
         self.segment_count = 1000
         self.random_size_factor = 0.05
@@ -55,27 +59,27 @@ class Simulator(object):
         # mu, std = norm.fit(data)
         # m = self.fit_poisson(data)
         while len(data) > 1:
-            self.sample["VIDEO"].append(data.pop())
-            self.sample["AUDIO"].append(data.pop())
+            self.sample["VIDEO"].append(data.pop() * 1000.0)
+            self.sample["AUDIO"].append(data.pop() * 1000.0)
 
     def next_segment_choices(self):
         # determine what should be fetched next. The lower buffer wins
-        if self.buffer_level("AUDIO") < self.buffer_level("VIDEO") and len(self.sample["AUDIO"])>0:
+        if self.buffer_level("AUDIO") < self.buffer_level("VIDEO") and len(self.sample["AUDIO"]) > 0:
             type_str = "AUDIO"
         else:
             type_str = "VIDEO"
         next_segment_choices = self.segments[type_str].pop()
         return type_str, next_segment_choices
 
-    def request_scheduler(self, adaptation):
+    def request_scheduler(self, adap):
         # simulate download
         type_str, choices = self.next_segment_choices()
-        next_seg = adaptation.evaluate(type_str, choices, self.state)
+        next_seg = adap.evaluate(type_str, choices, self.state)
         if next_seg.bps != self.stats.bitrate_selections[type_str].current_value:
             self.stats.bitrate_selections[type_str].append(self.state.t, next_seg.bps)
-        self.state.http = HttpMetric(self.sample[type_str].pop() * 1000.0, next_seg)
+        self.state.http = HttpMetric(self.sample[type_str].pop(), next_seg)
         # print self.state.http
-        self.state.metric.switches[type_str] = adaptation.bitrate_selections[type_str]
+        self.state.metric.switches[type_str] = adap.bitrate_selections[type_str]
 
     def timestep(self, is_buffering):
         tx_time_s = self.state.http.time_left
@@ -84,22 +88,22 @@ class Simulator(object):
 
         # dynamic timestep until the download finished. Linear interpolation
         self.state.t += tx_time_s
-        print("Timestep %.4f -> %.4f" % (self.state.t - tx_time_s, self.state.t))
-        print self.state.http
+        # print("Timestep %.4f -> %.4f" % (self.state.t - tx_time_s, self.state.t))
+        # print self.state.http
         self.state.metric.bps_history.append(self.state.t, self.state.http.bps)
 
         if not is_buffering:
-            print("Consuming %.2fs of buffer..." % tx_time_s)
+            # print("Consuming %.2fs of buffer..." % tx_time_s)
             self.state.buffer_level("VIDEO").decrease_by(self.state.t, tx_time_s)
             self.state.buffer_level("AUDIO").decrease_by(self.state.t, tx_time_s)
 
         # fixed timestep where downloaded data is added to the buffer
         self.state.t += self.TOLERANCE_SEC
-        print("Inc %.2fs of buffer..." % seg_duration)
+        # print("Inc %.2fs of buffer..." % seg_duration)
         self.state.buffer_level(type_str).increase_by(self.state.t, seg_duration)
 
-        print "[VIDEO]\t" + self.state.buffer_level("VIDEO").__unicode__()
-        print "[AUDIO]\t" + self.state.buffer_level("AUDIO").__unicode__()
+        # print "[VIDEO]\t" + self.state.buffer_level("VIDEO").__unicode__()
+        # print "[AUDIO]\t" + self.state.buffer_level("AUDIO").__unicode__()
 
     def run(self, filename):
         adap = adaptation.CastLabsAdaptation(self.bitrates)
@@ -115,6 +119,17 @@ class Simulator(object):
             self.request_scheduler(adap)    # simulate new http request if the current one has finished
             self.timestep(adap.is_buffering())
 
-        self.state.metric.print_stats()
-        bitswitch_plot(self.bitrates, self.state.metric.buffer_levels, self.state.metric.bps_history, self.state.metric.switches)
+
+        # self.state.metric.print_stats()
+
+        #plot(adap.bps_history, 'k')
+        # print adap.bps_history.y_data
+        #avg = alg.moving_average(self.state.metric.bps_history, 50)
+        # plt.plot(avg.x_data, avg.y_data,'g')
+        # plot(self.state.metric.bps_history, 'y')
+        #show()
+        # bitswitch_plot(self.bitrates, self.state.metric.buffer_levels, self.state.metric.bps_history, self.state.metric.switches)
+        a = {"VIDEO": copy.deepcopy(adap.my_bps)}
+
+        bitswitch_plot(self.bitrates, self.state.metric.buffer_levels, self.state.metric.bps_history, adap.bitrate_selections)
 

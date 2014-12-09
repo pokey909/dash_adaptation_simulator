@@ -86,9 +86,9 @@ class Trace(object):
     def y_data(self, data):
         self.data["y"].data = data
 
-    def append(self, x_data, y_data):
-        self.x_data.append(x_data)
-        self.y_data.append(y_data)
+    def append(self, x, y):
+        self.x_data.append(x)
+        self.y_data.append(y)
 
     @property
     def current_y_value(self):

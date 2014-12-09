@@ -11,7 +11,7 @@ class Segment:
         self.duration_seconds = duration_seconds
         self.bps = bps
         self.type_str = type
-        self.size_jitter = random.randrange(-5000, 5000, 1) # add some slight randomness to the size
+        self.size_jitter = random.randrange(-5000, 5000, 1)  # add some slight randomness to the size
 
     @property
     def size(self):
@@ -86,7 +86,7 @@ class HttpMetric:
         return self.segment.real_bps()
 
     def __unicode__(self):
-        return "HttpMetric:\n\tkbps: %d\n\tSegment size: %d bytes\n\tDuration sec: %.2f\n\tTime left: %.2f" % (
+        return "HttpMetric:\n\tbps: %d\n\tSegment size: %d bytes\n\tDuration sec: %.2f\n\tTime left: %.2f" % (
             self.bps, self.segment.size, self.duration_ms / 1000.0, self.time_left)
 
     def __str__(self):
