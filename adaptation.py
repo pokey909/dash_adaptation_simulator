@@ -152,6 +152,7 @@ class CastLabsAdaptation(Adaptation):
         if cur_level <= self.level_critical_seconds:
             segs_sorted = sorted(self.segment_choices, key=lambda k: k.bps)
             self.selected_bps[type_str] = segs_sorted[0].bps
+            self.hold_bps = 5
             if type_str == "VIDEO":
                 print "State 0 t=%.2f\nSelected %d bps at time [%.2f]" %(self.sim_state.t, self.selected_bps[type_str], self.sim_state.t)
         elif cur_level <= self.level_low_seconds:
@@ -169,9 +170,14 @@ class CastLabsAdaptation(Adaptation):
                     improve = self.next_higher_bitrate(segs_sorted, seg.bps)
                     if buffer_dt <  -delta:
                         print "Buffer DT: %.4f" % buffer_dt
-                        improve = self.next_lower_bitrate(segs_sorted, self.selected_bps[type_str])
+                        self.selected_bps[type_str] = self.next_lower_bitrate(segs_sorted, self.selected_bps[type_str])
+                        self.hold_bps = 1
                     elif improve > self.selected_bps[type_str]:
                         self.selected_bps[type_str] = self.next_higher_bitrate(segs_sorted, self.selected_bps[type_str])
+                        self.hold_bps = 1
+                    else:
+                        self.selected_bps[type_str] = self.next_lower_bitrate(segs_sorted, self.selected_bps[type_str])
+                        self.hold_bps = 2
                     if type_str == "VIDEO":
                         print "Selected %d bps at time [%.2f] with delta=%.2f / dur: %.2f / dltime: %.2f / est bps: %d" %(self.selected_bps[type_str], self.sim_state.t, x['delta'], seg.duration_seconds, seg.real_download_time(estimated_bps), estimated_bps)
                     break
@@ -179,7 +185,6 @@ class CastLabsAdaptation(Adaptation):
                     self.selected_bps[type_str] = segs[0].bps
                     if type_str == "VIDEO":
                         print "Selected %d bps at time [%.2f]" %(self.selected_bps[type_str], self.sim_state.t)
-                self.hold_bps = 1
             self.hold_bps = max(0, self.hold_bps - 1)
         elif cur_level <= self.level_high_seconds:
             print "State 2 t=%.2f" % self.sim_state.t
