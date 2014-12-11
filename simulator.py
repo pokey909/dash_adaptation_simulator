@@ -3,7 +3,7 @@ __author__ = 'pokey'
 from dash import *
 import adaptation
 from trace import Trace
-from visualizer import bitswitch_plot, plot, show, step
+from visualizer import bitswitch_plot
 import matplotlib.pyplot as plt
 import algorithms as alg
 import copy
@@ -75,11 +75,7 @@ class Simulator(object):
         # simulate download
         type_str, choices = self.next_segment_choices()
         next_seg = adap.evaluate(type_str, choices, self.state)
-        if next_seg.bps != self.stats.bitrate_selections[type_str].current_value:
-            self.stats.bitrate_selections[type_str].append(self.state.t, next_seg.bps)
         self.state.http = HttpMetric(self.sample[type_str].pop(), next_seg)
-        # print self.state.http
-        self.state.metric.switches[type_str] = adap.bitrate_selections[type_str]
 
     def timestep(self, is_buffering):
         tx_time_s = self.state.http.time_left
@@ -129,7 +125,8 @@ class Simulator(object):
         # plot(self.state.metric.bps_history, 'y')
         #show()
         # bitswitch_plot(self.bitrates, self.state.metric.buffer_levels, self.state.metric.bps_history, self.state.metric.switches)
-        a = {"VIDEO": copy.deepcopy(adap.my_bps)}
 
+        adap.bitrate_selections["VIDEO"].append(self.state.metric.buffer_levels["VIDEO"].x_data[-1], adap.bitrate_selections["VIDEO"].y_data[-1])
         bitswitch_plot(self.bitrates, self.state.metric.buffer_levels, self.state.metric.bps_history, adap.bitrate_selections)
+        # bitswitch_plot(self.bitrates, a, self.state.metric.bps_history, adap.bitrate_selections)
 

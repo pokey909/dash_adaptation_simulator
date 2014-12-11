@@ -18,6 +18,8 @@ class Segment:
         return int(self.duration_seconds * self.bps / 8.0) + self.size_jitter
 
     def real_download_time(self, at_bps):
+        if at_bps == 0:
+            return 1000000000
         return self.size / float(at_bps / 8.0)
 
     def real_bps(self):
